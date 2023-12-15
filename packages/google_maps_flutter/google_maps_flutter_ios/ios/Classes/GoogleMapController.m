@@ -67,6 +67,7 @@
 @property(nonatomic, strong) FLTPolylinesController *polylinesController;
 @property(nonatomic, strong) FLTCirclesController *circlesController;
 @property(nonatomic, strong) FLTTileOverlaysController *tileOverlaysController;
+@property(nonatomic, strong) FLTGroundOverlaysController  *groundOverlaysController;
 
 @end
 
@@ -137,6 +138,9 @@
     _tileOverlaysController = [[FLTTileOverlaysController alloc] init:_channel
                                                               mapView:_mapView
                                                             registrar:registrar];
+    _groundOverlaysController = [[FLTGroundOverlaysController alloc] init:_channel
+                                                                  mapView:_mapView
+                                                                registrar:registrar];
     id markersToAdd = args[@"markersToAdd"];
     if ([markersToAdd isKindOfClass:[NSArray class]]) {
       [_markersController addMarkers:markersToAdd];
@@ -156,6 +160,11 @@
     id tileOverlaysToAdd = args[@"tileOverlaysToAdd"];
     if ([tileOverlaysToAdd isKindOfClass:[NSArray class]]) {
       [_tileOverlaysController addTileOverlays:tileOverlaysToAdd];
+    }
+
+    id groundOverlaysToAdd = args[@"groundOverlaysToAdd"];
+    if ([groundOverlaysToAdd isKindOfClass:[NSArray class]]) {
+      [_groundOverlaysController addGroundOverlays:groundOverlaysToAdd];
     }
 
     [_mapView addObserver:self forKeyPath:@"frame" options:0 context:nil];
@@ -357,6 +366,20 @@
   } else if ([call.method isEqualToString:@"tileOverlays#clearTileCache"]) {
     id rawTileOverlayId = call.arguments[@"tileOverlayId"];
     [self.tileOverlaysController clearTileCacheWithIdentifier:rawTileOverlayId];
+    result(nil);
+  }else if ([call.method isEqualToString:@"groundOverlays#update"]) {
+    id groundOverlaysToAdd = call.arguments[@"groundOverlaysToAdd"];
+    if ([groundOverlaysToAdd isKindOfClass:[NSArray class]]) {
+      [_groundOverlaysController addGroundOverlays:groundOverlaysToAdd];
+    }
+    id groundOverlaysToChange = call.arguments[@"groundOverlaysToChange"];
+    if ([groundOverlaysToChange isKindOfClass:[NSArray class]]) {
+      [_groundOverlaysController changeGroundOverlays:groundOverlaysToChange];
+    }
+    id groundOverlayIdsToRemove = call.arguments[@"groundOverlayIdsToRemove"];
+    if ([groundOverlayIdsToRemove isKindOfClass:[NSArray class]]) {
+      [_groundOverlaysController removeGroundOverlayIds:groundOverlayIdsToRemove];
+    }
     result(nil);
   } else if ([call.method isEqualToString:@"map#isCompassEnabled"]) {
     NSNumber *isCompassEnabled = @(self.mapView.settings.compassButton);
@@ -565,6 +588,8 @@
     [self.polygonsController didTapPolygonWithIdentifier:overlayId];
   } else if ([self.circlesController hasCircleWithIdentifier:overlayId]) {
     [self.circlesController didTapCircleWithIdentifier:overlayId];
+  }else if ([self.groundOverlaysController hasGroundOverlayWithId:overlayId]) {
+      [self.groundOverlaysController onGroundOverlcayTap:overlayId];
   }
 }
 
