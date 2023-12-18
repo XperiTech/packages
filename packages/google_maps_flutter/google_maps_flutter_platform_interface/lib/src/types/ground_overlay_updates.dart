@@ -10,7 +10,6 @@ import 'types.dart';
 /// [GroundOverlay] update events to be applied to the [GoogleMap].
 ///
 /// Used in [GoogleMapController] when the map is updated.
-// (Do not re-export)
 class GroundOverlayUpdates extends MapsObjectUpdates<GroundOverlay> {
   /// Computes [GroundOverlayUpdates] given previous and current [GroundOverlay]s.
   GroundOverlayUpdates.from(Set<GroundOverlay> previous, Set<GroundOverlay> current)
