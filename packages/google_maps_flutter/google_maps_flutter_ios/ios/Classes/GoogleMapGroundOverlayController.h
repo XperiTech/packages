@@ -4,22 +4,9 @@
 
 #import <Flutter/Flutter.h>
 #import <GoogleMaps/GoogleMaps.h>
-#import "GoogleMapController.h"
-
-// Defines ground overlay UI options writable from Flutter.
-@protocol FLTGoogleMapGroundOverlayOptionsSink
-- (void)setBearing:(CLLocationDirection)bearing;
-- (void)setBitmapDescriptor:(UIImage*)bd;
-- (void)setBounds:(GMSCoordinateBounds*)bounds;
-- (void)setConsumeTapEvents:(BOOL)consume;
-- (void)setLocation:(CLLocationCoordinate2D)location width:(CGFloat)width height:(CGFloat)height;
-- (void)setOpacity:(float)opacity;
-- (void)setVisible:(BOOL)visible;
-- (void)setZIndex:(int)zIndex;
-@end
 
 // Defines ground overlay controllable by Flutter.
-@interface FLTGoogleMapGroundOverlayController : NSObject <FLTGoogleMapGroundOverlayOptionsSink>
+@interface FLTGoogleMapGroundOverlayController : NSObject
 @property(atomic, readonly) NSString* groundOverlayId;
 - (instancetype)initGroundOverlayWithPosition:(CLLocationCoordinate2D)position
                                          icon:(UIImage*)icon
