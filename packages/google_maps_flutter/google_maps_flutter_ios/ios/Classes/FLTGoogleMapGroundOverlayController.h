@@ -8,16 +8,10 @@
 // Defines ground overlay controllable by Flutter.
 @interface FLTGoogleMapGroundOverlayController : NSObject
 @property(atomic, readonly) NSString* groundOverlayId;
-- (instancetype)initGroundOverlayWithPosition:(CLLocationCoordinate2D)position
-                                         icon:(UIImage*)icon
-                                    zoomLevel:(CGFloat)zoomLevel
-                              groundOverlayId:(NSString*)groundOverlayId
-                                      mapView:(GMSMapView*)mapView;
 - (instancetype)initGroundOverlayWithBounds:(GMSCoordinateBounds*)bounds
                                        icon:(UIImage*)icon
                             groundOverlayId:(NSString*)groundOverlayId
                                     mapView:(GMSMapView*)mapView;
-- (BOOL)consumeTapEvents;
 - (void)removeGroundOverlay;
 @end
 

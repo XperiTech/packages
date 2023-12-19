@@ -2,32 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#import "GoogleMapGroundOverlayController.h"
+#import "FLTGoogleMapGroundOverlayController.h"
 #import "FLTGoogleMapJSONConversions.h"
+
+// Defines ground overlay UI options writable from Flutter.
+@protocol FLTGoogleMapGroundOverlayOptionsSink
+- (void)setBearing:(CLLocationDirection)bearing;
+- (void)setBitmapDescriptor:(UIImage*)bd;
+- (void)setBounds:(GMSCoordinateBounds*)bounds;
+- (void)setConsumeTapEvents:(BOOL)consume;
+- (void)setLocation:(CLLocationCoordinate2D)location width:(CGFloat)width height:(CGFloat)height;
+- (void)setOpacity:(float)opacity;
+- (void)setVisible:(BOOL)visible;
+- (void)setZIndex:(int)zIndex;
+@end
 
 static UIImage* ExtractBitmapDescriptor(NSObject<FlutterPluginRegistrar>* registrar, NSArray* bitmap);
 
 @implementation FLTGoogleMapGroundOverlayController {
   GMSGroundOverlay* _groundOverlay;
   GMSMapView* _mapView;
-  BOOL _consumeTapEvents;
 }
-- (instancetype)initGroundOverlayWithPosition:(CLLocationCoordinate2D)position
-                                         icon:(UIImage*)icon
-                                    zoomLevel:(CGFloat)zoomLevel
-                              groundOverlayId:(NSString*)groundOverlayId
-                                      mapView:(GMSMapView*)mapView {
-  self = [super init];
-  if (self) {
-    _groundOverlay = [GMSGroundOverlay groundOverlayWithPosition:position icon:icon zoomLevel:zoomLevel];
-    _mapView = mapView;
-    _groundOverlayId = groundOverlayId;
-    _groundOverlay.userData = @[ _groundOverlayId ];
-    _consumeTapEvents = NO;
-  }
-  return self;
-}
-
 - (instancetype)initGroundOverlayWithBounds:(GMSCoordinateBounds*)bounds
                                        icon:(UIImage*)icon
                             groundOverlayId:(NSString*)groundOverlayId
@@ -38,13 +33,8 @@ static UIImage* ExtractBitmapDescriptor(NSObject<FlutterPluginRegistrar>* regist
     _mapView = mapView;
     _groundOverlayId = groundOverlayId;
     _groundOverlay.userData = @[ _groundOverlayId ];
-    _consumeTapEvents = NO;
   }
   return self;
-}
-
-- (BOOL)consumeTapEvents {
-  return _consumeTapEvents;
 }
 
 - (void)removeGroundOverlay {
@@ -79,16 +69,16 @@ static UIImage* ExtractBitmapDescriptor(NSObject<FlutterPluginRegistrar>* regist
 }
 @end
 
-static int ToInt(NSNumber* data) { return [FLTGoogleMapJsonConversions toInt:data]; }
+static int ToInt(NSNumber* data) { return [FLTGoogleMapJSONConversions toInt:data]; }
 
-static BOOL ToBool(NSNumber* data) { return [FLTGoogleMapJsonConversions toBool:data]; }
+static BOOL ToBool(NSNumber* data) { return [FLTGoogleMapJSONConversions toBool:data]; }
 
-static double ToDouble(NSNumber* data) { return [FLTGoogleMapJsonConversions toDouble:data]; }
+static double ToDouble(NSNumber* data) { return [FLTGoogleMapJSONConversions toDouble:data]; }
 
-static float ToFloat(NSNumber* data) { return [FLTGoogleMapJsonConversions toFloat:data]; }
+static float ToFloat(NSNumber* data) { return [FLTGoogleMapJSONConversions toFloat:data]; }
 
 static CLLocationCoordinate2D ToLocation(NSArray* data) {
-  return [FLTGoogleMapJsonConversions toLocation:data];
+  return [FLTGoogleMapJSONConversions toLocation:data];
 }
 
 static GMSCoordinateBounds* ToLatLngBounds(NSArray* data) {

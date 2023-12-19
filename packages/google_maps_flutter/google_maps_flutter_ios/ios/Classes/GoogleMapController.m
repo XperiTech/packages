@@ -5,6 +5,7 @@
 #import "GoogleMapController.h"
 #import "FLTGoogleMapJSONConversions.h"
 #import "FLTGoogleMapTileOverlayController.h"
+#import "FLTGoogleMapGroundOverlayController.h"
 
 #pragma mark - Conversion of JSON-like values sent via platform channels. Forward declarations.
 
@@ -589,7 +590,7 @@
   } else if ([self.circlesController hasCircleWithIdentifier:overlayId]) {
     [self.circlesController didTapCircleWithIdentifier:overlayId];
   }else if ([self.groundOverlaysController hasGroundOverlayWithId:overlayId]) {
-      [self.groundOverlaysController onGroundOverlcayTap:overlayId];
+      [self.groundOverlaysController onGroundOverlayTap:overlayId];
   }
 }
 
