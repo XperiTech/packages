@@ -58,8 +58,11 @@ class GoogleMapsFlutterIOS extends GoogleMapsFlutterPlatform {
   }
 
   // Keep a collection of mapId to a map of TileOverlays.
-  final Map<int, Map<TileOverlayId, TileOverlay>> _tileOverlays =
-      <int, Map<TileOverlayId, TileOverlay>>{};
+  final Map<int, Map<TileOverlayId, TileOverlay>> _tileOverlays = <int,
+      Map<TileOverlayId,
+          TileOverlay>>{}; // Keep a collection of mapId to a map of TileOverlays.
+  final Map<int, Map<GroundOverlayId, GroundOverlay>> _groundOverlays =
+      <int, Map<GroundOverlayId, GroundOverlay>>{};
 
   /// Returns the channel for [mapId], creating it if it doesn't already exist.
   @visibleForTesting
@@ -340,17 +343,6 @@ class GoogleMapsFlutterIOS extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> updateGroundOverlays(
-    GroundOverlayUpdates groundOverlayUpdates, {
-    required int mapId,
-  }) {
-    return _channel(mapId).invokeMethod<void>(
-      'groundOverlays#update',
-      groundOverlayUpdates.toJson(),
-    );
-  }
-
-  @override
   Future<void> updateCircles(
     CircleUpdates circleUpdates, {
     required int mapId,
@@ -377,6 +369,36 @@ class GoogleMapsFlutterIOS extends GoogleMapsFlutterPlatform {
     return _channel(mapId).invokeMethod<void>(
       'tileOverlays#update',
       updates.toJson(),
+    );
+  }
+
+  // @override
+  // Future<void> updateGroundOverlays({
+  //   required Set<GroundOverlay> newGroundOverlays,
+  //   required int mapId,
+  // }) {
+  //   final Map<GroundOverlayId, GroundOverlay>? currentGroundOverlays =
+  //       _groundOverlays[mapId];
+  //   final Set<GroundOverlay> previousSet = currentGroundOverlays != null
+  //       ? currentGroundOverlays.values.toSet()
+  //       : <GroundOverlay>{};
+  //   final GroundOverlayUpdates updates =
+  //       GroundOverlayUpdates.from(previousSet, newGroundOverlays);
+  //   _groundOverlays[mapId] = keyByGroundOverlayId(newGroundOverlays);
+  //   return _channel(mapId).invokeMethod<void>(
+  //     'groundOverlays#update',
+  //     updates.toJson(),
+  //   );
+  // }
+
+  @override
+  Future<void> updateGroundOverlays(
+    GroundOverlayUpdates groundOverlayUpdates, {
+    required int mapId,
+  }) {
+    return _channel(mapId).invokeMethod<void>(
+      'groundOverlays#update',
+      groundOverlayUpdates.toJson(),
     );
   }
 
@@ -588,7 +610,7 @@ class GoogleMapsFlutterIOS extends GoogleMapsFlutterPlatform {
     Set<Marker> markers = const <Marker>{},
     Set<Polygon> polygons = const <Polygon>{},
     Set<Polyline> polylines = const <Polyline>{},
-        Set<GroundOverlay> groundOverlays = const <GroundOverlay>{},
+    Set<GroundOverlay> groundOverlays = const <GroundOverlay>{},
     Set<Circle> circles = const <Circle>{},
     Set<TileOverlay> tileOverlays = const <TileOverlay>{},
     Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
