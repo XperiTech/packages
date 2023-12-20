@@ -62,7 +62,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
 
   // Keep a collection of mapId to a map of TileOverlays.
   final Map<int, Map<TileOverlayId, TileOverlay>> _tileOverlays =
-      <int, Map<TileOverlayId, TileOverlay>>{};
+  <int, Map<TileOverlayId, TileOverlay>>{};
 
   /// Returns the channel for [mapId], creating it if it doesn't already exist.
   @visibleForTesting
@@ -71,7 +71,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
     if (channel == null) {
       channel = MethodChannel('plugins.flutter.io/google_maps_$mapId');
       channel.setMethodCallHandler(
-          (MethodCall call) => _handleMethodCall(call, mapId));
+              (MethodCall call) => _handleMethodCall(call, mapId));
       _channels[mapId] = channel;
     }
     return channel;
@@ -94,7 +94,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   // It is a `broadcast` because multiple controllers will connect to
   // different stream views of this Controller.
   final StreamController<MapEvent<Object?>> _mapEventStreamController =
-      StreamController<MapEvent<Object?>>.broadcast();
+  StreamController<MapEvent<Object?>>.broadcast();
 
   // Returns a filtered view of the events in the _controller, by mapId.
   Stream<MapEvent<Object?>> _events(int mapId) =>
@@ -159,6 +159,11 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   @override
   Stream<MapTapEvent> onTap({required int mapId}) {
     return _events(mapId).whereType<MapTapEvent>();
+  }
+
+  @override
+  Stream<GroundOverlayTapEvent> onGroundOverlayTap({required int mapId}) {
+    return _events(mapId).whereType<GroundOverlayTapEvent>();
   }
 
   @override
@@ -240,6 +245,12 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
           CircleId(arguments['circleId']! as String),
         ));
         break;
+      case 'groundOverlay#onTap':
+        _mapEventStreamController.add(GroundOverlayTapEvent(
+          mapId,
+          GroundOverlayId(call.arguments['groundOverlayId']),
+        ));
+        break;
       case 'map#onTap':
         final Map<String, Object?> arguments = _getArgumentDictionary(call);
         _mapEventStreamController.add(MapTapEvent(
@@ -257,10 +268,10 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
       case 'tileOverlay#getTile':
         final Map<String, Object?> arguments = _getArgumentDictionary(call);
         final Map<TileOverlayId, TileOverlay>? tileOverlaysForThisMap =
-            _tileOverlays[mapId];
+        _tileOverlays[mapId];
         final String tileOverlayId = arguments['tileOverlayId']! as String;
         final TileOverlay? tileOverlay =
-            tileOverlaysForThisMap?[TileOverlayId(tileOverlayId)];
+        tileOverlaysForThisMap?[TileOverlayId(tileOverlayId)];
         final TileProvider? tileProvider = tileOverlay?.tileProvider;
         if (tileProvider == null) {
           return TileProvider.noTile.toJson();
@@ -285,8 +296,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> updateMapOptions(
-    Map<String, dynamic> optionsUpdate, {
+  Future<void> updateMapOptions(Map<String, dynamic> optionsUpdate, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>(
@@ -298,8 +308,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> updateMarkers(
-    MarkerUpdates markerUpdates, {
+  Future<void> updateMarkers(MarkerUpdates markerUpdates, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>(
@@ -309,8 +318,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> updatePolygons(
-    PolygonUpdates polygonUpdates, {
+  Future<void> updatePolygons(PolygonUpdates polygonUpdates, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>(
@@ -320,8 +328,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> updatePolylines(
-    PolylineUpdates polylineUpdates, {
+  Future<void> updatePolylines(PolylineUpdates polylineUpdates, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>(
@@ -331,8 +338,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> updateCircles(
-    CircleUpdates circleUpdates, {
+  Future<void> updateCircles(CircleUpdates circleUpdates, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>(
@@ -347,12 +353,12 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
     required int mapId,
   }) {
     final Map<TileOverlayId, TileOverlay>? currentTileOverlays =
-        _tileOverlays[mapId];
+    _tileOverlays[mapId];
     final Set<TileOverlay> previousSet = currentTileOverlays != null
         ? currentTileOverlays.values.toSet()
         : <TileOverlay>{};
     final TileOverlayUpdates updates =
-        TileOverlayUpdates.from(previousSet, newTileOverlays);
+    TileOverlayUpdates.from(previousSet, newTileOverlays);
     _tileOverlays[mapId] = keyTileOverlayId(newTileOverlays);
     return channel(mapId).invokeMethod<void>(
       'tileOverlays#update',
@@ -361,8 +367,18 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> clearTileCache(
-    TileOverlayId tileOverlayId, {
+  Future<void> updateGroundOverlays(GroundOverlayUpdates groundOverlayUpdates, {
+    required int mapId,
+  }) {
+    assert(groundOverlayUpdates != null);
+    return channel(mapId).invokeMethod<void>(
+      'groundOverlays#update',
+      groundOverlayUpdates.toJson(),
+    );
+  }
+
+  @override
+  Future<void> clearTileCache(TileOverlayId tileOverlayId, {
     required int mapId,
   }) {
     return channel(mapId)
@@ -372,8 +388,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> animateCamera(
-    CameraUpdate cameraUpdate, {
+  Future<void> animateCamera(CameraUpdate cameraUpdate, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>('camera#animate', <String, Object>{
@@ -382,8 +397,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> moveCamera(
-    CameraUpdate cameraUpdate, {
+  Future<void> moveCamera(CameraUpdate cameraUpdate, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>('camera#move', <String, dynamic>{
@@ -392,8 +406,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> setMapStyle(
-    String? mapStyle, {
+  Future<void> setMapStyle(String? mapStyle, {
     required int mapId,
   }) async {
     final List<dynamic> successAndError = (await channel(mapId)
@@ -417,31 +430,28 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<ScreenCoordinate> getScreenCoordinate(
-    LatLng latLng, {
+  Future<ScreenCoordinate> getScreenCoordinate(LatLng latLng, {
     required int mapId,
   }) async {
     final Map<String, int> point = (await channel(mapId)
         .invokeMapMethod<String, int>(
-            'map#getScreenCoordinate', latLng.toJson()))!;
+        'map#getScreenCoordinate', latLng.toJson()))!;
 
     return ScreenCoordinate(x: point['x']!, y: point['y']!);
   }
 
   @override
-  Future<LatLng> getLatLng(
-    ScreenCoordinate screenCoordinate, {
+  Future<LatLng> getLatLng(ScreenCoordinate screenCoordinate, {
     required int mapId,
   }) async {
     final List<dynamic> latLng = (await channel(mapId)
         .invokeMethod<List<dynamic>>(
-            'map#getLatLng', screenCoordinate.toJson()))!;
+        'map#getLatLng', screenCoordinate.toJson()))!;
     return LatLng(latLng[0] as double, latLng[1] as double);
   }
 
   @override
-  Future<void> showMarkerInfoWindow(
-    MarkerId markerId, {
+  Future<void> showMarkerInfoWindow(MarkerId markerId, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>(
@@ -449,8 +459,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<void> hideMarkerInfoWindow(
-    MarkerId markerId, {
+  Future<void> hideMarkerInfoWindow(MarkerId markerId, {
     required int mapId,
   }) {
     return channel(mapId).invokeMethod<void>(
@@ -458,8 +467,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Future<bool> isMarkerInfoWindowShown(
-    MarkerId markerId, {
+  Future<bool> isMarkerInfoWindowShown(MarkerId markerId, {
     required int mapId,
   }) async {
     return (await channel(mapId).invokeMethod<bool>('markers#isInfoWindowShown',
@@ -494,16 +502,15 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   /// Defaults to false.
   bool useAndroidViewSurface = false;
 
-  Widget _buildView(
-    int creationId,
-    PlatformViewCreatedCallback onPlatformViewCreated, {
-    required MapWidgetConfiguration widgetConfiguration,
-    MapObjects mapObjects = const MapObjects(),
-    Map<String, dynamic> mapOptions = const <String, dynamic>{},
-  }) {
+  Widget _buildView(int creationId,
+      PlatformViewCreatedCallback onPlatformViewCreated, {
+        required MapWidgetConfiguration widgetConfiguration,
+        MapObjects mapObjects = const MapObjects(),
+        Map<String, dynamic> mapOptions = const <String, dynamic>{},
+      }) {
     final Map<String, dynamic> creationParams = <String, dynamic>{
       'initialCameraPosition':
-          widgetConfiguration.initialCameraPosition.toMap(),
+      widgetConfiguration.initialCameraPosition.toMap(),
       'options': mapOptions,
       'markersToAdd': serializeMarkerSet(mapObjects.markers),
       'polygonsToAdd': serializePolygonSet(mapObjects.polygons),
@@ -516,10 +523,8 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
       if (useAndroidViewSurface) {
         return PlatformViewLink(
           viewType: 'plugins.flutter.io/google_maps',
-          surfaceFactory: (
-            BuildContext context,
-            PlatformViewController controller,
-          ) {
+          surfaceFactory: (BuildContext context,
+              PlatformViewController controller,) {
             return AndroidViewSurface(
               controller: controller as AndroidViewController,
               gestureRecognizers: widgetConfiguration.gestureRecognizers,
@@ -528,7 +533,7 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
           },
           onCreatePlatformView: (PlatformViewCreationParams params) {
             final SurfaceAndroidViewController controller =
-                PlatformViewsService.initSurfaceAndroidView(
+            PlatformViewsService.initSurfaceAndroidView(
               id: params.id,
               viewType: 'plugins.flutter.io/google_maps',
               layoutDirection: widgetConfiguration.textDirection,
@@ -571,13 +576,12 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Widget buildViewWithConfiguration(
-    int creationId,
-    PlatformViewCreatedCallback onPlatformViewCreated, {
-    required MapWidgetConfiguration widgetConfiguration,
-    MapConfiguration mapConfiguration = const MapConfiguration(),
-    MapObjects mapObjects = const MapObjects(),
-  }) {
+  Widget buildViewWithConfiguration(int creationId,
+      PlatformViewCreatedCallback onPlatformViewCreated, {
+        required MapWidgetConfiguration widgetConfiguration,
+        MapConfiguration mapConfiguration = const MapConfiguration(),
+        MapObjects mapObjects = const MapObjects(),
+      }) {
     return _buildView(
       creationId,
       onPlatformViewCreated,
@@ -588,19 +592,18 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Widget buildViewWithTextDirection(
-    int creationId,
-    PlatformViewCreatedCallback onPlatformViewCreated, {
-    required CameraPosition initialCameraPosition,
-    required TextDirection textDirection,
-    Set<Marker> markers = const <Marker>{},
-    Set<Polygon> polygons = const <Polygon>{},
-    Set<Polyline> polylines = const <Polyline>{},
-    Set<Circle> circles = const <Circle>{},
-    Set<TileOverlay> tileOverlays = const <TileOverlay>{},
-    Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
-    Map<String, dynamic> mapOptions = const <String, dynamic>{},
-  }) {
+  Widget buildViewWithTextDirection(int creationId,
+      PlatformViewCreatedCallback onPlatformViewCreated, {
+        required CameraPosition initialCameraPosition,
+        required TextDirection textDirection,
+        Set<Marker> markers = const <Marker>{},
+        Set<Polygon> polygons = const <Polygon>{},
+        Set<Polyline> polylines = const <Polyline>{},
+        Set<Circle> circles = const <Circle>{},
+        Set<TileOverlay> tileOverlays = const <TileOverlay>{},
+        Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
+        Map<String, dynamic> mapOptions = const <String, dynamic>{},
+      }) {
     return _buildView(
       creationId,
       onPlatformViewCreated,
@@ -618,18 +621,18 @@ class MethodChannelGoogleMapsFlutter extends GoogleMapsFlutterPlatform {
   }
 
   @override
-  Widget buildView(
-    int creationId,
-    PlatformViewCreatedCallback onPlatformViewCreated, {
-    required CameraPosition initialCameraPosition,
-    Set<Marker> markers = const <Marker>{},
-    Set<Polygon> polygons = const <Polygon>{},
-    Set<Polyline> polylines = const <Polyline>{},
-    Set<Circle> circles = const <Circle>{},
-    Set<TileOverlay> tileOverlays = const <TileOverlay>{},
-    Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
-    Map<String, dynamic> mapOptions = const <String, dynamic>{},
-  }) {
+  Widget buildView(int creationId,
+      PlatformViewCreatedCallback onPlatformViewCreated, {
+        required CameraPosition initialCameraPosition,
+        Set<Marker> markers = const <Marker>{},
+        Set<Polygon> polygons = const <Polygon>{},
+        Set<Polyline> polylines = const <Polyline>{},
+        Set<Circle> circles = const <Circle>{},
+        Set<TileOverlay> tileOverlays = const <TileOverlay>{},
+        Set<GroundOverlay> groundOverlays = const <GroundOverlay>{},
+        Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
+        Map<String, dynamic> mapOptions = const <String, dynamic>{},
+      }) {
     return buildViewWithTextDirection(
       creationId,
       onPlatformViewCreated,
