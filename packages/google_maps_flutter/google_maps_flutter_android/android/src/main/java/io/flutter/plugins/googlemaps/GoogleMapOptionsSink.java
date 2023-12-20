@@ -5,54 +5,59 @@
 package io.flutter.plugins.googlemaps;
 
 import com.google.android.gms.maps.model.LatLngBounds;
+
 import java.util.List;
 import java.util.Map;
 
-/** Receiver of GoogleMap configuration options. */
+/**
+ * Receiver of GoogleMap configuration options.
+ */
 interface GoogleMapOptionsSink {
-  void setCameraTargetBounds(LatLngBounds bounds);
+    void setCameraTargetBounds(LatLngBounds bounds);
 
-  void setCompassEnabled(boolean compassEnabled);
+    void setCompassEnabled(boolean compassEnabled);
 
-  void setMapToolbarEnabled(boolean setMapToolbarEnabled);
+    void setMapToolbarEnabled(boolean setMapToolbarEnabled);
 
-  void setMapType(int mapType);
+    void setMapType(int mapType);
 
-  void setMinMaxZoomPreference(Float min, Float max);
+    void setMinMaxZoomPreference(Float min, Float max);
 
-  void setPadding(float top, float left, float bottom, float right);
+    void setPadding(float top, float left, float bottom, float right);
 
-  void setRotateGesturesEnabled(boolean rotateGesturesEnabled);
+    void setRotateGesturesEnabled(boolean rotateGesturesEnabled);
 
-  void setScrollGesturesEnabled(boolean scrollGesturesEnabled);
+    void setScrollGesturesEnabled(boolean scrollGesturesEnabled);
 
-  void setTiltGesturesEnabled(boolean tiltGesturesEnabled);
+    void setTiltGesturesEnabled(boolean tiltGesturesEnabled);
 
-  void setTrackCameraPosition(boolean trackCameraPosition);
+    void setTrackCameraPosition(boolean trackCameraPosition);
 
-  void setZoomGesturesEnabled(boolean zoomGesturesEnabled);
+    void setZoomGesturesEnabled(boolean zoomGesturesEnabled);
 
-  void setLiteModeEnabled(boolean liteModeEnabled);
+    void setLiteModeEnabled(boolean liteModeEnabled);
 
-  void setMyLocationEnabled(boolean myLocationEnabled);
+    void setMyLocationEnabled(boolean myLocationEnabled);
 
-  void setZoomControlsEnabled(boolean zoomControlsEnabled);
+    void setZoomControlsEnabled(boolean zoomControlsEnabled);
 
-  void setMyLocationButtonEnabled(boolean myLocationButtonEnabled);
+    void setMyLocationButtonEnabled(boolean myLocationButtonEnabled);
 
-  void setIndoorEnabled(boolean indoorEnabled);
+    void setIndoorEnabled(boolean indoorEnabled);
 
-  void setTrafficEnabled(boolean trafficEnabled);
+    void setTrafficEnabled(boolean trafficEnabled);
 
-  void setBuildingsEnabled(boolean buildingsEnabled);
+    void setBuildingsEnabled(boolean buildingsEnabled);
 
-  void setInitialMarkers(Object initialMarkers);
+    void setInitialMarkers(Object initialMarkers);
 
-  void setInitialPolygons(Object initialPolygons);
+    void setInitialPolygons(Object initialPolygons);
 
-  void setInitialPolylines(Object initialPolylines);
+    void setInitialPolylines(Object initialPolylines);
 
-  void setInitialCircles(Object initialCircles);
+    void setInitialCircles(Object initialCircles);
 
-  void setInitialTileOverlays(List<Map<String, ?>> initialTileOverlays);
+    void setInitialTileOverlays(List<Map<String, ?>> initialTileOverlays);
+
+    void setInitialGroundOverlays(Object initialGroundOverlays);
 }
