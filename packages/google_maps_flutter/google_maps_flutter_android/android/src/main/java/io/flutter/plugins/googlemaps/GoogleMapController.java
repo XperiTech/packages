@@ -244,12 +244,14 @@ final class GoogleMapController
                 }
                 mapReadyResult = result;
                 break;
-            case "map#update": {
+            case "map#update":
+            {
                 Convert.interpretGoogleMapOptions(call.argument("options"), this);
                 result.success(Convert.cameraPositionToJson(getCameraPosition()));
                 break;
             }
-            case "map#getVisibleRegion": {
+            case "map#getVisibleRegion":
+            {
                 if (googleMap != null) {
                     LatLngBounds latLngBounds = googleMap.getProjection().getVisibleRegion().latLngBounds;
                     result.success(Convert.latlngBoundsToJson(latLngBounds));
@@ -261,7 +263,8 @@ final class GoogleMapController
                 }
                 break;
             }
-            case "map#getScreenCoordinate": {
+            case "map#getScreenCoordinate":
+            {
                 if (googleMap != null) {
                     LatLng latLng = Convert.toLatLng(call.arguments);
                     Point screenLocation = googleMap.getProjection().toScreenLocation(latLng);
@@ -274,7 +277,8 @@ final class GoogleMapController
                 }
                 break;
             }
-            case "map#getLatLng": {
+            case "map#getLatLng":
+            {
                 if (googleMap != null) {
                     Point point = Convert.toPoint(call.arguments);
                     LatLng latLng = googleMap.getProjection().fromScreenLocation(point);
@@ -285,7 +289,8 @@ final class GoogleMapController
                 }
                 break;
             }
-            case "map#takeSnapshot": {
+            case "map#takeSnapshot":
+            {
                 if (googleMap != null) {
                     final MethodChannel.Result _result = result;
                     googleMap.snapshot(
@@ -304,22 +309,24 @@ final class GoogleMapController
                 }
                 break;
             }
-            case "camera#move": {
+            case "camera#move":
+            {
                 final CameraUpdate cameraUpdate =
                         Convert.toCameraUpdate(call.argument("cameraUpdate"), density);
                 moveCamera(cameraUpdate);
                 result.success(null);
                 break;
             }
-            case "camera#animate": {
+            case "camera#animate":
+            {
                 final CameraUpdate cameraUpdate =
                         Convert.toCameraUpdate(call.argument("cameraUpdate"), density);
                 animateCamera(cameraUpdate);
                 result.success(null);
                 break;
             }
-            case "markers#update": {
-                invalidateMapIfNeeded();
+            case "markers#update":
+            {
                 List<Object> markersToAdd = call.argument("markersToAdd");
                 markersController.addMarkers(markersToAdd);
                 List<Object> markersToChange = call.argument("markersToChange");
@@ -329,23 +336,26 @@ final class GoogleMapController
                 result.success(null);
                 break;
             }
-            case "markers#showInfoWindow": {
+            case "markers#showInfoWindow":
+            {
                 Object markerId = call.argument("markerId");
                 markersController.showMarkerInfoWindow((String) markerId, result);
                 break;
             }
-            case "markers#hideInfoWindow": {
+            case "markers#hideInfoWindow":
+            {
                 Object markerId = call.argument("markerId");
                 markersController.hideMarkerInfoWindow((String) markerId, result);
                 break;
             }
-            case "markers#isInfoWindowShown": {
+            case "markers#isInfoWindowShown":
+            {
                 Object markerId = call.argument("markerId");
                 markersController.isInfoWindowShown((String) markerId, result);
                 break;
             }
-            case "polygons#update": {
-                invalidateMapIfNeeded();
+            case "polygons#update":
+            {
                 List<Object> polygonsToAdd = call.argument("polygonsToAdd");
                 polygonsController.addPolygons(polygonsToAdd);
                 List<Object> polygonsToChange = call.argument("polygonsToChange");
@@ -355,8 +365,8 @@ final class GoogleMapController
                 result.success(null);
                 break;
             }
-            case "polylines#update": {
-                invalidateMapIfNeeded();
+            case "polylines#update":
+            {
                 List<Object> polylinesToAdd = call.argument("polylinesToAdd");
                 polylinesController.addPolylines(polylinesToAdd);
                 List<Object> polylinesToChange = call.argument("polylinesToChange");
@@ -366,8 +376,8 @@ final class GoogleMapController
                 result.success(null);
                 break;
             }
-            case "circles#update": {
-                invalidateMapIfNeeded();
+            case "circles#update":
+            {
                 List<Object> circlesToAdd = call.argument("circlesToAdd");
                 circlesController.addCircles(circlesToAdd);
                 List<Object> circlesToChange = call.argument("circlesToChange");
@@ -377,63 +387,76 @@ final class GoogleMapController
                 result.success(null);
                 break;
             }
-            case "map#isCompassEnabled": {
+            case "map#isCompassEnabled":
+            {
                 result.success(googleMap.getUiSettings().isCompassEnabled());
                 break;
             }
-            case "map#isMapToolbarEnabled": {
+            case "map#isMapToolbarEnabled":
+            {
                 result.success(googleMap.getUiSettings().isMapToolbarEnabled());
                 break;
             }
-            case "map#getMinMaxZoomLevels": {
+            case "map#getMinMaxZoomLevels":
+            {
                 List<Float> zoomLevels = new ArrayList<>(2);
                 zoomLevels.add(googleMap.getMinZoomLevel());
                 zoomLevels.add(googleMap.getMaxZoomLevel());
                 result.success(zoomLevels);
                 break;
             }
-            case "map#isZoomGesturesEnabled": {
+            case "map#isZoomGesturesEnabled":
+            {
                 result.success(googleMap.getUiSettings().isZoomGesturesEnabled());
                 break;
             }
-            case "map#isLiteModeEnabled": {
+            case "map#isLiteModeEnabled":
+            {
                 result.success(options.getLiteMode());
                 break;
             }
-            case "map#isZoomControlsEnabled": {
+            case "map#isZoomControlsEnabled":
+            {
                 result.success(googleMap.getUiSettings().isZoomControlsEnabled());
                 break;
             }
-            case "map#isScrollGesturesEnabled": {
+            case "map#isScrollGesturesEnabled":
+            {
                 result.success(googleMap.getUiSettings().isScrollGesturesEnabled());
                 break;
             }
-            case "map#isTiltGesturesEnabled": {
+            case "map#isTiltGesturesEnabled":
+            {
                 result.success(googleMap.getUiSettings().isTiltGesturesEnabled());
                 break;
             }
-            case "map#isRotateGesturesEnabled": {
+            case "map#isRotateGesturesEnabled":
+            {
                 result.success(googleMap.getUiSettings().isRotateGesturesEnabled());
                 break;
             }
-            case "map#isMyLocationButtonEnabled": {
+            case "map#isMyLocationButtonEnabled":
+            {
                 result.success(googleMap.getUiSettings().isMyLocationButtonEnabled());
                 break;
             }
-            case "map#isTrafficEnabled": {
+            case "map#isTrafficEnabled":
+            {
                 result.success(googleMap.isTrafficEnabled());
                 break;
             }
-            case "map#isBuildingsEnabled": {
+            case "map#isBuildingsEnabled":
+            {
                 result.success(googleMap.isBuildingsEnabled());
                 break;
             }
-            case "map#getZoomLevel": {
+            case "map#getZoomLevel":
+            {
                 result.success(googleMap.getCameraPosition().zoom);
                 break;
             }
-            case "map#setStyle": {
-                invalidateMapIfNeeded();
+            case "map#setStyle":
+            {
                 boolean mapStyleSet;
                 if (call.arguments instanceof String) {
                     String mapStyle = (String) call.arguments;
@@ -454,8 +477,8 @@ final class GoogleMapController
                 result.success(mapStyleResult);
                 break;
             }
-            case "tileOverlays#update": {
-                invalidateMapIfNeeded();
+            case "tileOverlays#update":
+            {
                 List<Map<String, ?>> tileOverlaysToAdd = call.argument("tileOverlaysToAdd");
                 tileOverlaysController.addTileOverlays(tileOverlaysToAdd);
                 List<Map<String, ?>> tileOverlaysToChange = call.argument("tileOverlaysToChange");
@@ -465,14 +488,15 @@ final class GoogleMapController
                 result.success(null);
                 break;
             }
-            case "tileOverlays#clearTileCache": {
-                invalidateMapIfNeeded();
+            case "tileOverlays#clearTileCache":
+            {
                 String tileOverlayId = call.argument("tileOverlayId");
                 tileOverlaysController.clearTileCache(tileOverlayId);
                 result.success(null);
                 break;
             }
-            case "map#getTileOverlayInfo": {
+            case "map#getTileOverlayInfo":
+            {
                 String tileOverlayId = call.argument("tileOverlayId");
                 result.success(tileOverlaysController.getTileOverlayInfo(tileOverlayId));
                 break;
