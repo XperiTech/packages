@@ -189,7 +189,7 @@ final class GoogleMapController
         }
     }
 
-    // Returns the first TextureView found in the view hierarchy.
+  // Returns the first TextureView found in the view hierarchy.
     private static TextureView findTextureView(ViewGroup group) {
         final int n = group.getChildCount();
         for (int i = 0; i < n; i++) {
