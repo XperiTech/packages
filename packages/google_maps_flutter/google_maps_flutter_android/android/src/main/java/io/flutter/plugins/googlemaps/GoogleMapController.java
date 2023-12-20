@@ -17,6 +17,7 @@ import android.view.TextureView;
 import android.view.TextureView.SurfaceTextureListener;
 import android.view.View;
 import android.view.ViewGroup;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -154,13 +155,13 @@ final class GoogleMapController
     }
 
 
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
         this.googleMap.setIndoorEnabled(this.indoorEnabled);
         this.googleMap.setTrafficEnabled(this.trafficEnabled);
-        this.googleMap.setBuildingsEnabled(this.buildingsEnabled);installInvalidator();
+        this.googleMap.setBuildingsEnabled(this.buildingsEnabled);
+        installInvalidator();
         googleMap.setOnInfoWindowClickListener(this);
         if (mapReadyResult != null) {
             mapReadyResult.success(null);
@@ -189,70 +190,70 @@ final class GoogleMapController
         }
     }
 
-  // Returns the first TextureView found in the view hierarchy.
-  private static TextureView findTextureView(ViewGroup group) {
-    final int n = group.getChildCount();
-    for (int i = 0; i < n; i++) {
-      View view = group.getChildAt(i);
-      if (view instanceof TextureView) {
-        return (TextureView) view;
-      }
-      if (view instanceof ViewGroup) {
-        TextureView r = findTextureView((ViewGroup) view);
-        if (r != null) {
-          return r;
+    // Returns the first TextureView found in the view hierarchy.
+    private static TextureView findTextureView(ViewGroup group) {
+        final int n = group.getChildCount();
+        for (int i = 0; i < n; i++) {
+            View view = group.getChildAt(i);
+            if (view instanceof TextureView) {
+                return (TextureView) view;
+            }
+            if (view instanceof ViewGroup) {
+                TextureView r = findTextureView((ViewGroup) view);
+                if (r != null) {
+                    return r;
+                }
+            }
         }
-      }
+        return null;
     }
-    return null;
-  }
 
-  private void installInvalidator() {
-    if (mapView == null) {
-      // This should only happen in tests.
-      return;
+    private void installInvalidator() {
+        if (mapView == null) {
+            // This should only happen in tests.
+            return;
+        }
+        TextureView textureView = findTextureView(mapView);
+        if (textureView == null) {
+            Log.i(TAG, "No TextureView found. Likely using the LEGACY renderer.");
+            return;
+        }
+        Log.i(TAG, "Installing custom TextureView driven invalidator.");
+        SurfaceTextureListener internalListener = textureView.getSurfaceTextureListener();
+        // Override the Maps internal SurfaceTextureListener with our own. Our listener
+        // mostly just invokes the internal listener callbacks but in onSurfaceTextureUpdated
+        // the mapView is invalidated which ensures that all map updates are presented to the
+        // screen.
+        final MapView mapView = this.mapView;
+        textureView.setSurfaceTextureListener(
+                new TextureView.SurfaceTextureListener() {
+                    public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                        if (internalListener != null) {
+                            internalListener.onSurfaceTextureAvailable(surface, width, height);
+                        }
+                    }
+
+                    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                        if (internalListener != null) {
+                            return internalListener.onSurfaceTextureDestroyed(surface);
+                        }
+                        return true;
+                    }
+
+                    public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+                        if (internalListener != null) {
+                            internalListener.onSurfaceTextureSizeChanged(surface, width, height);
+                        }
+                    }
+
+                    public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+                        if (internalListener != null) {
+                            internalListener.onSurfaceTextureUpdated(surface);
+                        }
+                        mapView.invalidate();
+                    }
+                });
     }
-    TextureView textureView = findTextureView(mapView);
-    if (textureView == null) {
-      Log.i(TAG, "No TextureView found. Likely using the LEGACY renderer.");
-      return;
-    }
-    Log.i(TAG, "Installing custom TextureView driven invalidator.");
-    SurfaceTextureListener internalListener = textureView.getSurfaceTextureListener();
-    // Override the Maps internal SurfaceTextureListener with our own. Our listener
-    // mostly just invokes the internal listener callbacks but in onSurfaceTextureUpdated
-    // the mapView is invalidated which ensures that all map updates are presented to the
-    // screen.
-    final MapView mapView = this.mapView;
-    textureView.setSurfaceTextureListener(
-        new TextureView.SurfaceTextureListener() {
-          public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            if (internalListener != null) {
-              internalListener.onSurfaceTextureAvailable(surface, width, height);
-            }
-          }
-
-          public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            if (internalListener != null) {
-              return internalListener.onSurfaceTextureDestroyed(surface);
-            }
-            return true;
-          }
-
-          public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            if (internalListener != null) {
-              internalListener.onSurfaceTextureSizeChanged(surface, width, height);
-            }
-          }
-
-          public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            if (internalListener != null) {
-              internalListener.onSurfaceTextureUpdated(surface);
-            }
-            mapView.invalidate();
-          }
-        });
-  }
 
     @Override
     public void onMethodCall(MethodCall call, MethodChannel.Result result) {
@@ -339,7 +340,6 @@ final class GoogleMapController
                 break;
             }
             case "markers#update": {
-                invalidateMapIfNeeded();
                 List<Object> markersToAdd = call.argument("markersToAdd");
                 markersController.addMarkers(markersToAdd);
                 List<Object> markersToChange = call.argument("markersToChange");
@@ -365,7 +365,6 @@ final class GoogleMapController
                 break;
             }
             case "polygons#update": {
-                invalidateMapIfNeeded();
                 List<Object> polygonsToAdd = call.argument("polygonsToAdd");
                 polygonsController.addPolygons(polygonsToAdd);
                 List<Object> polygonsToChange = call.argument("polygonsToChange");
@@ -376,7 +375,6 @@ final class GoogleMapController
                 break;
             }
             case "polylines#update": {
-                invalidateMapIfNeeded();
                 List<Object> polylinesToAdd = call.argument("polylinesToAdd");
                 polylinesController.addPolylines(polylinesToAdd);
                 List<Object> polylinesToChange = call.argument("polylinesToChange");
@@ -387,7 +385,6 @@ final class GoogleMapController
                 break;
             }
             case "circles#update": {
-                invalidateMapIfNeeded();
                 List<Object> circlesToAdd = call.argument("circlesToAdd");
                 circlesController.addCircles(circlesToAdd);
                 List<Object> circlesToChange = call.argument("circlesToChange");
@@ -453,7 +450,6 @@ final class GoogleMapController
                 break;
             }
             case "map#setStyle": {
-                invalidateMapIfNeeded();
                 boolean mapStyleSet;
                 if (call.arguments instanceof String) {
                     String mapStyle = (String) call.arguments;
@@ -475,7 +471,6 @@ final class GoogleMapController
                 break;
             }
             case "tileOverlays#update": {
-                invalidateMapIfNeeded();
                 List<Map<String, ?>> tileOverlaysToAdd = call.argument("tileOverlaysToAdd");
                 tileOverlaysController.addTileOverlays(tileOverlaysToAdd);
                 List<Map<String, ?>> tileOverlaysToChange = call.argument("tileOverlaysToChange");
@@ -486,7 +481,6 @@ final class GoogleMapController
                 break;
             }
             case "tileOverlays#clearTileCache": {
-                invalidateMapIfNeeded();
                 String tileOverlayId = call.argument("tileOverlayId");
                 tileOverlaysController.clearTileCache(tileOverlayId);
                 result.success(null);
