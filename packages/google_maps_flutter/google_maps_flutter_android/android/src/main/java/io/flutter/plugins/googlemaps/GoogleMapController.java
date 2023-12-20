@@ -10,10 +10,13 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.graphics.SurfaceTexture;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Choreographer;
+import android.view.TextureView;
+import android.view.TextureView.SurfaceTextureListener;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -151,61 +154,14 @@ final class GoogleMapController
         return trackCameraPosition ? googleMap.getCameraPosition() : null;
     }
 
-    private boolean loadedCallbackPending = false;
 
-    /**
-     * Invalidates the map view after the map has finished rendering.
-     *
-     * <p>gmscore GL renderer uses a {@link android.view.TextureView}. Android platform views that are
-     * displayed as a texture after Flutter v3.0.0. require that the view hierarchy is notified after
-     * all drawing operations have been flushed.
-     *
-     * <p>Since the GL renderer doesn't use standard Android views, and instead uses GL directly, we
-     * notify the view hierarchy by invalidating the view.
-     *
-     * <p>Unfortunately, when {@link GoogleMap.OnMapLoadedCallback} is fired, the texture may not have
-     * been updated yet.
-     *
-     * <p>To workaround this limitation, wait two frames. This ensures that at least the frame budget
-     * (16.66ms at 60hz) have passed since the drawing operation was issued.
-     */
-    private void invalidateMapIfNeeded() {
-        if (googleMap == null || loadedCallbackPending) {
-            return;
-        }
-        loadedCallbackPending = true;
-        googleMap.setOnMapLoadedCallback(
-                () -> {
-                    loadedCallbackPending = false;
-                    postFrameCallback(
-                            () -> {
-                                postFrameCallback(
-                                        () -> {
-                                            if (mapView != null) {
-                                                mapView.invalidate();
-                                            }
-                                        });
-                            });
-                });
-    }
-
-    private static void postFrameCallback(Runnable f) {
-        Choreographer.getInstance()
-                .postFrameCallback(
-                        new Choreographer.FrameCallback() {
-                            @Override
-                            public void doFrame(long frameTimeNanos) {
-                                f.run();
-                            }
-                        });
-    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
         this.googleMap.setIndoorEnabled(this.indoorEnabled);
         this.googleMap.setTrafficEnabled(this.trafficEnabled);
-        this.googleMap.setBuildingsEnabled(this.buildingsEnabled);
+        this.googleMap.setBuildingsEnabled(this.buildingsEnabled);installInvalidator();
         googleMap.setOnInfoWindowClickListener(this);
         if (mapReadyResult != null) {
             mapReadyResult.success(null);
@@ -234,263 +190,352 @@ final class GoogleMapController
         }
     }
 
-    @Override
-    public void onMethodCall(MethodCall call, MethodChannel.Result result) {
-        switch (call.method) {
-            case "map#waitForMap":
-                if (googleMap != null) {
-                    result.success(null);
-                    return;
-                }
-                mapReadyResult = result;
-                break;
-            case "map#update": {
-                Convert.interpretGoogleMapOptions(call.argument("options"), this);
-                result.success(Convert.cameraPositionToJson(getCameraPosition()));
-                break;
-            }
-            case "map#getVisibleRegion": {
-                if (googleMap != null) {
-                    LatLngBounds latLngBounds = googleMap.getProjection().getVisibleRegion().latLngBounds;
-                    result.success(Convert.latlngBoundsToJson(latLngBounds));
-                } else {
-                    result.error(
-                            "GoogleMap uninitialized",
-                            "getVisibleRegion called prior to map initialization",
-                            null);
-                }
-                break;
-            }
-            case "map#getScreenCoordinate": {
-                if (googleMap != null) {
-                    LatLng latLng = Convert.toLatLng(call.arguments);
-                    Point screenLocation = googleMap.getProjection().toScreenLocation(latLng);
-                    result.success(Convert.pointToJson(screenLocation));
-                } else {
-                    result.error(
-                            "GoogleMap uninitialized",
-                            "getScreenCoordinate called prior to map initialization",
-                            null);
-                }
-                break;
-            }
-            case "map#getLatLng": {
-                if (googleMap != null) {
-                    Point point = Convert.toPoint(call.arguments);
-                    LatLng latLng = googleMap.getProjection().fromScreenLocation(point);
-                    result.success(Convert.latLngToJson(latLng));
-                } else {
-                    result.error(
-                            "GoogleMap uninitialized", "getLatLng called prior to map initialization", null);
-                }
-                break;
-            }
-            case "map#takeSnapshot": {
-                if (googleMap != null) {
-                    final MethodChannel.Result _result = result;
-                    googleMap.snapshot(
-                            new SnapshotReadyCallback() {
-                                @Override
-                                public void onSnapshotReady(Bitmap bitmap) {
-                                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                                    byte[] byteArray = stream.toByteArray();
-                                    bitmap.recycle();
-                                    _result.success(byteArray);
-                                }
-                            });
-                } else {
-                    result.error("GoogleMap uninitialized", "takeSnapshot", null);
-                }
-                break;
-            }
-            case "camera#move": {
-                final CameraUpdate cameraUpdate =
-                        Convert.toCameraUpdate(call.argument("cameraUpdate"), density);
-                moveCamera(cameraUpdate);
-                result.success(null);
-                break;
-            }
-            case "camera#animate": {
-                final CameraUpdate cameraUpdate =
-                        Convert.toCameraUpdate(call.argument("cameraUpdate"), density);
-                animateCamera(cameraUpdate);
-                result.success(null);
-                break;
-            }
-            case "markers#update": {
-                invalidateMapIfNeeded();
-                List<Object> markersToAdd = call.argument("markersToAdd");
-                markersController.addMarkers(markersToAdd);
-                List<Object> markersToChange = call.argument("markersToChange");
-                markersController.changeMarkers(markersToChange);
-                List<Object> markerIdsToRemove = call.argument("markerIdsToRemove");
-                markersController.removeMarkers(markerIdsToRemove);
-                result.success(null);
-                break;
-            }
-            case "markers#showInfoWindow": {
-                Object markerId = call.argument("markerId");
-                markersController.showMarkerInfoWindow((String) markerId, result);
-                break;
-            }
-            case "markers#hideInfoWindow": {
-                Object markerId = call.argument("markerId");
-                markersController.hideMarkerInfoWindow((String) markerId, result);
-                break;
-            }
-            case "markers#isInfoWindowShown": {
-                Object markerId = call.argument("markerId");
-                markersController.isInfoWindowShown((String) markerId, result);
-                break;
-            }
-            case "polygons#update": {
-                invalidateMapIfNeeded();
-                List<Object> polygonsToAdd = call.argument("polygonsToAdd");
-                polygonsController.addPolygons(polygonsToAdd);
-                List<Object> polygonsToChange = call.argument("polygonsToChange");
-                polygonsController.changePolygons(polygonsToChange);
-                List<Object> polygonIdsToRemove = call.argument("polygonIdsToRemove");
-                polygonsController.removePolygons(polygonIdsToRemove);
-                result.success(null);
-                break;
-            }
-            case "polylines#update": {
-                invalidateMapIfNeeded();
-                List<Object> polylinesToAdd = call.argument("polylinesToAdd");
-                polylinesController.addPolylines(polylinesToAdd);
-                List<Object> polylinesToChange = call.argument("polylinesToChange");
-                polylinesController.changePolylines(polylinesToChange);
-                List<Object> polylineIdsToRemove = call.argument("polylineIdsToRemove");
-                polylinesController.removePolylines(polylineIdsToRemove);
-                result.success(null);
-                break;
-            }
-            case "circles#update": {
-                invalidateMapIfNeeded();
-                List<Object> circlesToAdd = call.argument("circlesToAdd");
-                circlesController.addCircles(circlesToAdd);
-                List<Object> circlesToChange = call.argument("circlesToChange");
-                circlesController.changeCircles(circlesToChange);
-                List<Object> circleIdsToRemove = call.argument("circleIdsToRemove");
-                circlesController.removeCircles(circleIdsToRemove);
-                result.success(null);
-                break;
-            }
-            case "map#isCompassEnabled": {
-                result.success(googleMap.getUiSettings().isCompassEnabled());
-                break;
-            }
-            case "map#isMapToolbarEnabled": {
-                result.success(googleMap.getUiSettings().isMapToolbarEnabled());
-                break;
-            }
-            case "map#getMinMaxZoomLevels": {
-                List<Float> zoomLevels = new ArrayList<>(2);
-                zoomLevels.add(googleMap.getMinZoomLevel());
-                zoomLevels.add(googleMap.getMaxZoomLevel());
-                result.success(zoomLevels);
-                break;
-            }
-            case "map#isZoomGesturesEnabled": {
-                result.success(googleMap.getUiSettings().isZoomGesturesEnabled());
-                break;
-            }
-            case "map#isLiteModeEnabled": {
-                result.success(options.getLiteMode());
-                break;
-            }
-            case "map#isZoomControlsEnabled": {
-                result.success(googleMap.getUiSettings().isZoomControlsEnabled());
-                break;
-            }
-            case "map#isScrollGesturesEnabled": {
-                result.success(googleMap.getUiSettings().isScrollGesturesEnabled());
-                break;
-            }
-            case "map#isTiltGesturesEnabled": {
-                result.success(googleMap.getUiSettings().isTiltGesturesEnabled());
-                break;
-            }
-            case "map#isRotateGesturesEnabled": {
-                result.success(googleMap.getUiSettings().isRotateGesturesEnabled());
-                break;
-            }
-            case "map#isMyLocationButtonEnabled": {
-                result.success(googleMap.getUiSettings().isMyLocationButtonEnabled());
-                break;
-            }
-            case "map#isTrafficEnabled": {
-                result.success(googleMap.isTrafficEnabled());
-                break;
-            }
-            case "map#isBuildingsEnabled": {
-                result.success(googleMap.isBuildingsEnabled());
-                break;
-            }
-            case "map#getZoomLevel": {
-                result.success(googleMap.getCameraPosition().zoom);
-                break;
-            }
-            case "map#setStyle": {
-                invalidateMapIfNeeded();
-                boolean mapStyleSet;
-                if (call.arguments instanceof String) {
-                    String mapStyle = (String) call.arguments;
-                    if (mapStyle == null) {
-                        mapStyleSet = googleMap.setMapStyle(null);
-                    } else {
-                        mapStyleSet = googleMap.setMapStyle(new MapStyleOptions(mapStyle));
-                    }
-                } else {
-                    mapStyleSet = googleMap.setMapStyle(null);
-                }
-                ArrayList<Object> mapStyleResult = new ArrayList<>(2);
-                mapStyleResult.add(mapStyleSet);
-                if (!mapStyleSet) {
-                    mapStyleResult.add(
-                            "Unable to set the map style. Please check console logs for errors.");
-                }
-                result.success(mapStyleResult);
-                break;
-            }
-            case "tileOverlays#update": {
-                invalidateMapIfNeeded();
-                List<Map<String, ?>> tileOverlaysToAdd = call.argument("tileOverlaysToAdd");
-                tileOverlaysController.addTileOverlays(tileOverlaysToAdd);
-                List<Map<String, ?>> tileOverlaysToChange = call.argument("tileOverlaysToChange");
-                tileOverlaysController.changeTileOverlays(tileOverlaysToChange);
-                List<String> tileOverlaysToRemove = call.argument("tileOverlayIdsToRemove");
-                tileOverlaysController.removeTileOverlays(tileOverlaysToRemove);
-                result.success(null);
-                break;
-            }
-            case "tileOverlays#clearTileCache": {
-                invalidateMapIfNeeded();
-                String tileOverlayId = call.argument("tileOverlayId");
-                tileOverlaysController.clearTileCache(tileOverlayId);
-                result.success(null);
-                break;
-            }
-            case "map#getTileOverlayInfo": {
-                String tileOverlayId = call.argument("tileOverlayId");
-                result.success(tileOverlaysController.getTileOverlayInfo(tileOverlayId));
-                break;
-            }
-            case "groundOverlays#update": {
-                List<Object> groundOverlaysToAdd = call.argument("groundOverlaysToAdd");
-                groundOverlaysController.addGroundOverlays(groundOverlaysToAdd);
-                List<Object> groundOverlaysToChange = call.argument("groundOverlaysToChange");
-                groundOverlaysController.changeGroundOverlays(groundOverlaysToChange);
-                List<Object> groundOverlayIdsToRemove = call.argument("groundOverlayIdsToRemove");
-                groundOverlaysController.removeGroundOverlays(groundOverlayIdsToRemove);
-                result.success(null);
-                break;
-            }
-            default:
-                result.notImplemented();
+  // Returns the first TextureView found in the view hierarchy.
+  private static TextureView findTextureView(ViewGroup group) {
+    final int n = group.getChildCount();
+    for (int i = 0; i < n; i++) {
+      View view = group.getChildAt(i);
+      if (view instanceof TextureView) {
+        return (TextureView) view;
+      }
+      if (view instanceof ViewGroup) {
+        TextureView r = findTextureView((ViewGroup) view);
+        if (r != null) {
+          return r;
         }
+      }
     }
+    return null;
+  }
+
+  private void installInvalidator() {
+    if (mapView == null) {
+      // This should only happen in tests.
+      return;
+    }
+    TextureView textureView = findTextureView(mapView);
+    if (textureView == null) {
+      Log.i(TAG, "No TextureView found. Likely using the LEGACY renderer.");
+      return;
+    }
+    Log.i(TAG, "Installing custom TextureView driven invalidator.");
+    SurfaceTextureListener internalListener = textureView.getSurfaceTextureListener();
+    // Override the Maps internal SurfaceTextureListener with our own. Our listener
+    // mostly just invokes the internal listener callbacks but in onSurfaceTextureUpdated
+    // the mapView is invalidated which ensures that all map updates are presented to the
+    // screen.
+    final MapView mapView = this.mapView;
+    textureView.setSurfaceTextureListener(
+        new TextureView.SurfaceTextureListener() {
+          public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            if (internalListener != null) {
+              internalListener.onSurfaceTextureAvailable(surface, width, height);
+            }
+          }
+
+          public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            if (internalListener != null) {
+              return internalListener.onSurfaceTextureDestroyed(surface);
+            }
+            return true;
+          }
+
+          public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            if (internalListener != null) {
+              internalListener.onSurfaceTextureSizeChanged(surface, width, height);
+            }
+          }
+
+          public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+            if (internalListener != null) {
+              internalListener.onSurfaceTextureUpdated(surface);
+            }
+            mapView.invalidate();
+          }
+        });
+  }
+
+  @Override
+  public void onMethodCall(MethodCall call, MethodChannel.Result result) {
+    switch (call.method) {
+      case "map#waitForMap":
+        if (googleMap != null) {
+          result.success(null);
+          return;
+        }
+        mapReadyResult = result;
+        break;
+      case "map#update":
+        {
+          Convert.interpretGoogleMapOptions(call.argument("options"), this);
+          result.success(Convert.cameraPositionToJson(getCameraPosition()));
+          break;
+        }
+      case "map#getVisibleRegion":
+        {
+          if (googleMap != null) {
+            LatLngBounds latLngBounds = googleMap.getProjection().getVisibleRegion().latLngBounds;
+            result.success(Convert.latlngBoundsToJson(latLngBounds));
+          } else {
+            result.error(
+                "GoogleMap uninitialized",
+                "getVisibleRegion called prior to map initialization",
+                null);
+          }
+          break;
+        }
+      case "map#getScreenCoordinate":
+        {
+          if (googleMap != null) {
+            LatLng latLng = Convert.toLatLng(call.arguments);
+            Point screenLocation = googleMap.getProjection().toScreenLocation(latLng);
+            result.success(Convert.pointToJson(screenLocation));
+          } else {
+            result.error(
+                "GoogleMap uninitialized",
+                "getScreenCoordinate called prior to map initialization",
+                null);
+          }
+          break;
+        }
+      case "map#getLatLng":
+        {
+          if (googleMap != null) {
+            Point point = Convert.toPoint(call.arguments);
+            LatLng latLng = googleMap.getProjection().fromScreenLocation(point);
+            result.success(Convert.latLngToJson(latLng));
+          } else {
+            result.error(
+                "GoogleMap uninitialized", "getLatLng called prior to map initialization", null);
+          }
+          break;
+        }
+      case "map#takeSnapshot":
+        {
+          if (googleMap != null) {
+            final MethodChannel.Result _result = result;
+            googleMap.snapshot(
+                new SnapshotReadyCallback() {
+                  @Override
+                  public void onSnapshotReady(Bitmap bitmap) {
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    byte[] byteArray = stream.toByteArray();
+                    bitmap.recycle();
+                    _result.success(byteArray);
+                  }
+                });
+          } else {
+            result.error("GoogleMap uninitialized", "takeSnapshot", null);
+          }
+          break;
+        }
+      case "camera#move":
+        {
+          final CameraUpdate cameraUpdate =
+              Convert.toCameraUpdate(call.argument("cameraUpdate"), density);
+          moveCamera(cameraUpdate);
+          result.success(null);
+          break;
+        }
+      case "camera#animate":
+        {
+          final CameraUpdate cameraUpdate =
+              Convert.toCameraUpdate(call.argument("cameraUpdate"), density);
+          animateCamera(cameraUpdate);
+          result.success(null);
+          break;
+        }
+      case "markers#update":
+        {
+          List<Object> markersToAdd = call.argument("markersToAdd");
+          markersController.addMarkers(markersToAdd);
+          List<Object> markersToChange = call.argument("markersToChange");
+          markersController.changeMarkers(markersToChange);
+          List<Object> markerIdsToRemove = call.argument("markerIdsToRemove");
+          markersController.removeMarkers(markerIdsToRemove);
+          result.success(null);
+          break;
+        }
+      case "markers#showInfoWindow":
+        {
+          Object markerId = call.argument("markerId");
+          markersController.showMarkerInfoWindow((String) markerId, result);
+          break;
+        }
+      case "markers#hideInfoWindow":
+        {
+          Object markerId = call.argument("markerId");
+          markersController.hideMarkerInfoWindow((String) markerId, result);
+          break;
+        }
+      case "markers#isInfoWindowShown":
+        {
+          Object markerId = call.argument("markerId");
+          markersController.isInfoWindowShown((String) markerId, result);
+          break;
+        }
+      case "polygons#update":
+        {
+          List<Object> polygonsToAdd = call.argument("polygonsToAdd");
+          polygonsController.addPolygons(polygonsToAdd);
+          List<Object> polygonsToChange = call.argument("polygonsToChange");
+          polygonsController.changePolygons(polygonsToChange);
+          List<Object> polygonIdsToRemove = call.argument("polygonIdsToRemove");
+          polygonsController.removePolygons(polygonIdsToRemove);
+          result.success(null);
+          break;
+        }
+      case "polylines#update":
+        {
+          List<Object> polylinesToAdd = call.argument("polylinesToAdd");
+          polylinesController.addPolylines(polylinesToAdd);
+          List<Object> polylinesToChange = call.argument("polylinesToChange");
+          polylinesController.changePolylines(polylinesToChange);
+          List<Object> polylineIdsToRemove = call.argument("polylineIdsToRemove");
+          polylinesController.removePolylines(polylineIdsToRemove);
+          result.success(null);
+          break;
+        }
+      case "circles#update":
+        {
+          List<Object> circlesToAdd = call.argument("circlesToAdd");
+          circlesController.addCircles(circlesToAdd);
+          List<Object> circlesToChange = call.argument("circlesToChange");
+          circlesController.changeCircles(circlesToChange);
+          List<Object> circleIdsToRemove = call.argument("circleIdsToRemove");
+          circlesController.removeCircles(circleIdsToRemove);
+          result.success(null);
+          break;
+        }
+      case "map#isCompassEnabled":
+        {
+          result.success(googleMap.getUiSettings().isCompassEnabled());
+          break;
+        }
+      case "map#isMapToolbarEnabled":
+        {
+          result.success(googleMap.getUiSettings().isMapToolbarEnabled());
+          break;
+        }
+      case "map#getMinMaxZoomLevels":
+        {
+          List<Float> zoomLevels = new ArrayList<>(2);
+          zoomLevels.add(googleMap.getMinZoomLevel());
+          zoomLevels.add(googleMap.getMaxZoomLevel());
+          result.success(zoomLevels);
+          break;
+        }
+      case "map#isZoomGesturesEnabled":
+        {
+          result.success(googleMap.getUiSettings().isZoomGesturesEnabled());
+          break;
+        }
+      case "map#isLiteModeEnabled":
+        {
+          result.success(options.getLiteMode());
+          break;
+        }
+      case "map#isZoomControlsEnabled":
+        {
+          result.success(googleMap.getUiSettings().isZoomControlsEnabled());
+          break;
+        }
+      case "map#isScrollGesturesEnabled":
+        {
+          result.success(googleMap.getUiSettings().isScrollGesturesEnabled());
+          break;
+        }
+      case "map#isTiltGesturesEnabled":
+        {
+          result.success(googleMap.getUiSettings().isTiltGesturesEnabled());
+          break;
+        }
+      case "map#isRotateGesturesEnabled":
+        {
+          result.success(googleMap.getUiSettings().isRotateGesturesEnabled());
+          break;
+        }
+      case "map#isMyLocationButtonEnabled":
+        {
+          result.success(googleMap.getUiSettings().isMyLocationButtonEnabled());
+          break;
+        }
+      case "map#isTrafficEnabled":
+        {
+          result.success(googleMap.isTrafficEnabled());
+          break;
+        }
+      case "map#isBuildingsEnabled":
+        {
+          result.success(googleMap.isBuildingsEnabled());
+          break;
+        }
+      case "map#getZoomLevel":
+        {
+          result.success(googleMap.getCameraPosition().zoom);
+          break;
+        }
+      case "map#setStyle":
+        {
+          boolean mapStyleSet;
+          if (call.arguments instanceof String) {
+            String mapStyle = (String) call.arguments;
+            if (mapStyle == null) {
+              mapStyleSet = googleMap.setMapStyle(null);
+            } else {
+              mapStyleSet = googleMap.setMapStyle(new MapStyleOptions(mapStyle));
+            }
+          } else {
+            mapStyleSet = googleMap.setMapStyle(null);
+          }
+          ArrayList<Object> mapStyleResult = new ArrayList<>(2);
+          mapStyleResult.add(mapStyleSet);
+          if (!mapStyleSet) {
+            mapStyleResult.add(
+                "Unable to set the map style. Please check console logs for errors.");
+          }
+          result.success(mapStyleResult);
+          break;
+        }
+      case "tileOverlays#update":
+        {
+          List<Map<String, ?>> tileOverlaysToAdd = call.argument("tileOverlaysToAdd");
+          tileOverlaysController.addTileOverlays(tileOverlaysToAdd);
+          List<Map<String, ?>> tileOverlaysToChange = call.argument("tileOverlaysToChange");
+          tileOverlaysController.changeTileOverlays(tileOverlaysToChange);
+          List<String> tileOverlaysToRemove = call.argument("tileOverlayIdsToRemove");
+          tileOverlaysController.removeTileOverlays(tileOverlaysToRemove);
+          result.success(null);
+          break;
+        }
+      case "tileOverlays#clearTileCache":
+        {
+          String tileOverlayId = call.argument("tileOverlayId");
+          tileOverlaysController.clearTileCache(tileOverlayId);
+          result.success(null);
+          break;
+        }
+      case "map#getTileOverlayInfo":
+        {
+          String tileOverlayId = call.argument("tileOverlayId");
+          result.success(tileOverlaysController.getTileOverlayInfo(tileOverlayId));
+          break;
+        }
+      case "groundOverlays#update": {
+        List<Object> groundOverlaysToAdd = call.argument("groundOverlaysToAdd");
+        groundOverlaysController.addGroundOverlays(groundOverlaysToAdd);
+        List<Object> groundOverlaysToChange = call.argument("groundOverlaysToChange");
+        groundOverlaysController.changeGroundOverlays(groundOverlaysToChange);
+        List<Object> groundOverlayIdsToRemove = call.argument("groundOverlayIdsToRemove");
+        groundOverlaysController.removeGroundOverlays(groundOverlayIdsToRemove);
+        result.success(null);
+        break;
+      }
+      default:
+        result.notImplemented();
+    }
+  }
 
     @Override
     public void onMapClick(LatLng latLng) {
