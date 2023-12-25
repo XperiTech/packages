@@ -8,6 +8,7 @@
 #import "GoogleMapMarkerController.h"
 #import "GoogleMapPolygonController.h"
 #import "GoogleMapPolylineController.h"
+#import "FLTGoogleMapGroundOverlayController.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
