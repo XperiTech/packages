@@ -62,6 +62,9 @@ public class GoogleMapFactory extends PlatformViewFactory {
     if (cloudMapId != null) {
       builder.setMapId((String) cloudMapId);
     }
+    if (params.containsKey("groundOverlaysToAdd")) {
+      builder.setInitialGroundOverlays(params.get("groundOverlaysToAdd"));
+    }
 
     return builder.build(id, context, binaryMessenger, lifecycleProvider);
   }
